@@ -1,6 +1,9 @@
 use crate::container::ContainerInfo;
 use crate::finding::Finding;
 
+pub mod privileged;
+pub mod root_user;
+
 /// Trait for security checks that can be run against containers
 pub trait Check: Send + Sync {
     /// Return the name of this check
