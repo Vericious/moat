@@ -1,11 +1,13 @@
 use crate::container::ContainerInfo;
 use crate::finding::Finding;
 
+mod exposed_ports;
 mod host_mounts;
 mod privileged;
 mod root_user;
 mod socket_mount;
 
+pub use exposed_ports::ExposedPortsCheck;
 pub use host_mounts::HostMountsCheck;
 pub use privileged::PrivilegedCheck;
 pub use root_user::RootUserCheck;
@@ -27,6 +29,7 @@ pub fn all_checks() -> Vec<Box<dyn Check>> {
         Box::new(RootUserCheck::new()),
         Box::new(SocketMountCheck::new()),
         Box::new(HostMountsCheck::new()),
+        Box::new(ExposedPortsCheck::new()),
     ]
 }
 
@@ -37,11 +40,12 @@ mod tests {
     #[test]
     fn test_all_checks_returns_vec_with_all_checks() {
         let checks = all_checks();
-        assert_eq!(checks.len(), 4);
+        assert_eq!(checks.len(), 5);
         assert!(checks.iter().any(|c| c.name() == "PrivilegedCheck"));
         assert!(checks.iter().any(|c| c.name() == "RootUserCheck"));
         assert!(checks.iter().any(|c| c.name() == "SocketMountCheck"));
         assert!(checks.iter().any(|c| c.name() == "HostMountsCheck"));
+        assert!(checks.iter().any(|c| c.name() == "ExposedPortsCheck"));
     }
 
     #[test]
