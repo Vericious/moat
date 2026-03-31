@@ -1,6 +1,8 @@
 use clap::{Parser, Subcommand, ValueEnum};
 use std::path::PathBuf;
 
+mod finding;
+
 /// Homelab Docker security scanner
 #[derive(Parser)]
 #[command(
