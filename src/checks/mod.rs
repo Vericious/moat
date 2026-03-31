@@ -1,6 +1,10 @@
 use crate::container::ContainerInfo;
 use crate::finding::Finding;
 
+mod privileged;
+
+pub use privileged::PrivilegedCheck;
+
 /// Trait for security checks that can be run against containers
 pub trait Check: Send + Sync {
     /// Return the name of this check
@@ -12,8 +16,7 @@ pub trait Check: Send + Sync {
 
 /// Return all registered security checks
 pub fn all_checks() -> Vec<Box<dyn Check>> {
-    // Initially return empty - checks will be registered in future tasks
-    Vec::new()
+    vec![Box::new(PrivilegedCheck::new())]
 }
 
 #[cfg(test)]
@@ -21,9 +24,10 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_all_checks_returns_vec() {
+    fn test_all_checks_returns_vec_with_privileged_check() {
         let checks = all_checks();
-        assert!(checks.is_empty());
+        assert_eq!(checks.len(), 1);
+        assert_eq!(checks[0].name(), "PrivilegedCheck");
     }
 
     #[test]
