@@ -1,6 +1,7 @@
 use crate::container::ContainerInfo;
 use crate::finding::Finding;
 
+pub mod exposed_ports;
 pub mod host_mounts;
 pub mod privileged;
 pub mod root_user;
