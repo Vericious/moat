@@ -2,8 +2,10 @@ use crate::container::ContainerInfo;
 use crate::finding::Finding;
 
 mod privileged;
+mod root_user;
 
 pub use privileged::PrivilegedCheck;
+pub use root_user::RootUserCheck;
 
 /// Trait for security checks that can be run against containers
 pub trait Check: Send + Sync {
@@ -16,7 +18,10 @@ pub trait Check: Send + Sync {
 
 /// Return all registered security checks
 pub fn all_checks() -> Vec<Box<dyn Check>> {
-    vec![Box::new(PrivilegedCheck::new())]
+    vec![
+        Box::new(PrivilegedCheck::new()),
+        Box::new(RootUserCheck::new()),
+    ]
 }
 
 #[cfg(test)]
@@ -24,10 +29,11 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_all_checks_returns_vec_with_privileged_check() {
+    fn test_all_checks_returns_vec_with_all_checks() {
         let checks = all_checks();
-        assert_eq!(checks.len(), 1);
-        assert_eq!(checks[0].name(), "PrivilegedCheck");
+        assert_eq!(checks.len(), 2);
+        assert!(checks.iter().any(|c| c.name() == "PrivilegedCheck"));
+        assert!(checks.iter().any(|c| c.name() == "RootUserCheck"));
     }
 
     #[test]
