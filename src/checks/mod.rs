@@ -1,6 +1,8 @@
 use crate::container::ContainerInfo;
 use crate::finding::Finding;
+use crate::checks::env_secrets::EnvSecretsCheck;
 
+pub mod env_secrets;
 pub mod exposed_ports;
 pub mod host_mounts;
 pub mod privileged;
@@ -19,8 +21,7 @@ pub trait Check: Send + Sync {
 
 /// Return all registered security checks
 pub fn all_checks() -> Vec<Box<dyn Check>> {
-    // Initially empty - checks will be registered here as they are implemented
-    Vec::new()
+    vec![Box::new(EnvSecretsCheck::new())]
 }
 
 #[cfg(test)]
@@ -42,7 +43,7 @@ mod tests {
     #[test]
     fn test_all_checks_returns_vec() {
         let checks = all_checks();
-        assert!(checks.is_empty());
+        assert!(!checks.is_empty());
     }
 
     #[test]
