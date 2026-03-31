@@ -3,6 +3,7 @@ use crate::finding::Finding;
 
 pub mod privileged;
 pub mod root_user;
+pub mod socket_mount;
 
 /// Trait for security checks that can be run against containers
 pub trait Check: Send + Sync {
