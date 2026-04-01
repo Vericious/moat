@@ -18,9 +18,9 @@ pub enum ScanError {
 }
 
 /// Docker container scanner
+#[derive(Debug)]
 pub struct Scanner {
     docker: Docker,
-    socket_path: String,
 }
 
 impl Scanner {
@@ -32,10 +32,7 @@ impl Scanner {
         let docker = Docker::connect_with_socket(socket_path, 10000, bollard::API_DEFAULT_VERSION)
             .map_err(|e| ScanError::ConnectionError(e.to_string()))?;
 
-        Ok(Scanner {
-            docker,
-            socket_path: socket_path.to_string(),
-        })
+        Ok(Scanner { docker })
     }
 
     /// Scan all running containers and return their information
@@ -320,5 +317,18 @@ mod tests {
             assert!(!c.name.is_empty());
             assert!(!c.image.is_empty());
         }
+    }
+
+    /// Verify descriptive error when Docker socket path is invalid
+    #[test]
+    fn test_scanner_connection_error_message() {
+        let result = Scanner::new("/nonexistent/bad.sock");
+        assert!(result.is_err(), "Expected error for invalid socket");
+        let err_msg = result.unwrap_err().to_string().to_lowercase();
+        assert!(
+            err_msg.contains("connect") || err_msg.contains("socket") || err_msg.contains("not found"),
+            "Expected descriptive error, got: {}",
+            err_msg
+        );
     }
 }

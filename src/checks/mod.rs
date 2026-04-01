@@ -1,6 +1,14 @@
 use crate::container::ContainerInfo;
 use crate::finding::Finding;
 
+pub mod privileged;
+pub mod root_user;
+pub mod socket_mount;
+pub mod host_mounts;
+pub mod exposed_ports;
+pub mod env_secrets;
+pub mod resource_limits;
+
 /// Trait for security checks that can be run against containers
 pub trait Check: Send + Sync {
     /// Return the name of this check
@@ -12,8 +20,15 @@ pub trait Check: Send + Sync {
 
 /// Return all registered security checks
 pub fn all_checks() -> Vec<Box<dyn Check>> {
-    // Initially empty - checks will be registered here as they are implemented
-    Vec::new()
+    vec![
+        Box::new(privileged::PrivilegedCheck::new()),
+        Box::new(root_user::RootUserCheck::new()),
+        Box::new(socket_mount::SocketMountCheck::new()),
+        Box::new(host_mounts::HostMountsCheck::new()),
+        Box::new(exposed_ports::ExposedPortsCheck::new()),
+        Box::new(env_secrets::EnvSecretsCheck::new()),
+        Box::new(resource_limits::ResourceLimitsCheck::new()),
+    ]
 }
 
 #[cfg(test)]
@@ -33,9 +48,13 @@ mod tests {
     }
 
     #[test]
-    fn test_all_checks_returns_vec() {
+    fn test_all_checks_returns_vec_with_checks() {
         let checks = all_checks();
-        assert!(checks.is_empty());
+        assert!(!checks.is_empty());
+        // Verify all checks have names
+        for check in &checks {
+            assert!(!check.name().is_empty());
+        }
     }
 
     #[test]

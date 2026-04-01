@@ -1,8 +1,10 @@
 use clap::{Parser, Subcommand, ValueEnum};
 use std::path::PathBuf;
 
+mod checks;
 mod container;
 mod finding;
+mod report;
 mod scanner;
 
 /// Homelab Docker security scanner
@@ -96,18 +98,37 @@ async fn run_scan(config: &Config) -> anyhow::Result<()> {
         eprintln!("Connecting to Docker via socket: {:?}", config.socket);
     }
 
-    let scanner = scanner::Scanner::new(config.socket.to_str().unwrap_or("/var/run/docker.sock"))?;
-    let containers = scanner.scan().await?;
+    let scanner = scanner::Scanner::new(
+        config.socket.to_str().unwrap_or("/var/run/docker.sock")
+    ).map_err(|e| anyhow::anyhow!("Failed to connect to Docker: {}", e))?;
+
+    let containers = scanner.scan().await
+        .map_err(|e| anyhow::anyhow!("Failed to scan containers: {}", e))?;
 
     if config.verbose {
-        eprintln!("Found {} running containers", containers.len());
+        eprintln!("Scanned {} running containers", containers.len());
     }
 
-    for container in &containers {
-        println!("  {} ({})", container.name, container.image);
+    if containers.is_empty() {
+        println!("No running containers found.");
+        return Ok(());
     }
 
-    println!("Scan complete — {} containers scanned", containers.len());
+    let checks = checks::all_checks();
+    let reporter = report::Reporter::new();
+
+    let all_findings: Vec<_> = containers.iter()
+        .flat_map(|c| {
+            checks.iter().flat_map(|check| {
+                if config.verbose {
+                    eprintln!("  Running {} on {}", check.name(), c.name);
+                }
+                check.run(c)
+            }).collect::<Vec<_>>()
+        })
+        .collect();
+
+    reporter.report(&all_findings);
     Ok(())
 }
 
