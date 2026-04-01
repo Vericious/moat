@@ -3,6 +3,7 @@ use std::path::PathBuf;
 
 mod container;
 mod finding;
+mod scanner;
 
 /// Homelab Docker security scanner
 #[derive(Parser)]
@@ -90,15 +91,28 @@ fn run_version() {
     println!("moat v{}", env!("CARGO_PKG_VERSION"));
 }
 
-fn run_scan(config: &Config) -> anyhow::Result<()> {
+async fn run_scan(config: &Config) -> anyhow::Result<()> {
     if config.verbose {
-        eprintln!("Scanning containers via socket: {:?}", config.socket);
+        eprintln!("Connecting to Docker via socket: {:?}", config.socket);
     }
-    println!("Scan complete (no containers checked yet)");
+
+    let scanner = scanner::Scanner::new(config.socket.to_str().unwrap_or("/var/run/docker.sock"))?;
+    let containers = scanner.scan().await?;
+
+    if config.verbose {
+        eprintln!("Found {} running containers", containers.len());
+    }
+
+    for container in &containers {
+        println!("  {} ({})", container.name, container.image);
+    }
+
+    println!("Scan complete — {} containers scanned", containers.len());
     Ok(())
 }
 
-fn main() {
+#[tokio::main]
+async fn main() {
     let cli = Cli::parse();
 
     let config = match &cli.command {
@@ -118,7 +132,7 @@ fn main() {
         eprintln!("Socket: {:?}", config.socket);
     }
 
-    if let Err(e) = run_scan(&config) {
+    if let Err(e) = run_scan(&config).await {
         eprintln!("Error: {}", e);
         std::process::exit(1);
     }

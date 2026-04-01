@@ -917,6 +917,7 @@ dependencies = [
  "bollard",
  "clap",
  "futures",
+ "futures-util",
  "owo-colors",
  "predicates",
  "regex",
@@ -924,6 +925,7 @@ dependencies = [
  "serde",
  "serde_json",
  "tempfile",
+ "thiserror 1.0.69",
  "tokio",
 ]
 
