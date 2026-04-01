@@ -3,6 +3,7 @@ use std::path::PathBuf;
 
 mod container;
 mod finding;
+mod scanner;
 
 /// Homelab Docker security scanner
 #[derive(Parser)]
