@@ -8,6 +8,9 @@ pub mod host_mounts;
 pub mod exposed_ports;
 pub mod env_secrets;
 pub mod resource_limits;
+pub mod health_check;
+pub mod host_network;
+pub mod image_freshness;
 
 /// Trait for security checks that can be run against containers
 pub trait Check: Send + Sync {
@@ -28,6 +31,9 @@ pub fn all_checks() -> Vec<Box<dyn Check>> {
         Box::new(exposed_ports::ExposedPortsCheck::new()),
         Box::new(env_secrets::EnvSecretsCheck::new()),
         Box::new(resource_limits::ResourceLimitsCheck::new()),
+        Box::new(health_check::HealthCheckCheck::new()),
+        Box::new(host_network::HostNetworkCheck::new()),
+        Box::new(image_freshness::ImageFreshnessCheck::new()),
     ]
 }
 
@@ -48,13 +54,22 @@ mod tests {
     }
 
     #[test]
-    fn test_all_checks_returns_vec_with_checks() {
+    fn test_all_checks_returns_ten_checks() {
         let checks = all_checks();
-        assert!(!checks.is_empty());
-        // Verify all checks have names
-        for check in &checks {
-            assert!(!check.name().is_empty());
-        }
+        assert_eq!(checks.len(), 10, "all_checks() should return exactly 10 checks");
+    }
+
+    #[test]
+    fn test_all_checks_have_unique_names() {
+        let checks = all_checks();
+        let names: Vec<_> = checks.iter().map(|c| c.name()).collect();
+        let unique_names: std::collections::HashSet<_> = names.iter().collect();
+        assert_eq!(
+            unique_names.len(),
+            names.len(),
+            "All check names should be unique, got: {:?}",
+            names
+        );
     }
 
     #[test]
