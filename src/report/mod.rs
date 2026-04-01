@@ -1,21 +1,61 @@
 //! Reporter — formats and displays security findings
 
+pub mod json;
+pub mod markdown;
+
 use crate::finding::{Finding, Severity};
-use owo_colors::OwoColorize;
+use crate::report::json::JsonReporter;
+use crate::report::markdown::MarkdownReporter;
+use thiserror::Error;
 
-/// Reporter that formats findings for terminal output
-pub struct Reporter;
+#[derive(Debug, Error)]
+pub enum ReporterError {
+    #[error("Unknown output format: {0}")]
+    UnknownFormat(String),
+}
 
-impl Reporter {
+/// Reporter trait for formatting and displaying security findings
+pub trait Reporter: Send + Sync {
+    /// Format findings and return the report as a string
+    fn report(&self, findings: &[Finding]) -> String;
+}
+
+/// Reporter that formats findings for terminal output with ANSI colors
+pub struct TerminalReporter;
+
+impl TerminalReporter {
     pub fn new() -> Self {
-        Reporter
+        TerminalReporter
     }
 
-    /// Report all findings to stdout
-    pub fn report(&self, findings: &[Finding]) {
+    fn format_summary(&self, findings: &[Finding]) -> String {
+        let total = findings.len();
+        let by_container: std::collections::HashMap<_, _> = findings
+            .iter()
+            .fold(std::collections::HashMap::new(), |mut acc, f| {
+                *acc.entry(&f.container_name).or_insert(0) += 1;
+                acc
+            });
+
+        let mut output = String::from("─── Summary ───────────────────────────────────────────\n");
+        output.push_str(&format!("  Total findings: {}\n", total));
+        for (container, count) in by_container {
+            output.push_str(&format!("  • {}: {} finding(s)\n", container, count));
+        }
+        output
+    }
+}
+
+impl Default for TerminalReporter {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl Reporter for TerminalReporter {
+    fn report(&self, findings: &[Finding]) -> String {
         if findings.is_empty() {
-            println!("✅ No security issues found.");
-            return;
+            return "✅ No security issues found.".to_string();
         }
 
         // Group by severity
@@ -25,120 +65,91 @@ impl Reporter {
         let low: Vec<_> = findings.iter().filter(|f| f.severity == Severity::Low).collect();
         let info: Vec<_> = findings.iter().filter(|f| f.severity == Severity::Info).collect();
 
-        println!();
+        let mut output = String::new();
 
         if !critical.is_empty() {
-            self.print_group_critical("CRITICAL", &critical);
+            output.push_str(&format!(
+                "\n{}",
+                "\u{001B}[41;37;1m━━━ CRITICAL ━━━\u{001B}[0m"
+            ));
+            for finding in &critical {
+                output.push_str(&format!("\n  [{}] {} ({})\n", finding.container_name, finding.message, finding.check_name));
+                if let Some(ref rem) = finding.remediation {
+                    output.push_str(&format!("    → {}\n", rem));
+                }
+            }
+            output.push('\n');
         }
         if !high.is_empty() {
-            self.print_group_high("HIGH", &high);
+            output.push_str("\n\u{001B}[43;30m━━━ HIGH ━━━\u{001B}[0m\n");
+            for finding in &high {
+                output.push_str(&format!("  [{}] {} ({})\n", finding.container_name, finding.message, finding.check_name));
+                if let Some(ref rem) = finding.remediation {
+                    output.push_str(&format!("    → {}\n", rem));
+                }
+            }
+            output.push('\n');
         }
         if !medium.is_empty() {
-            self.print_group_medium("MEDIUM", &medium);
+            output.push_str("\n\u{001B}[43;30m━━━ MEDIUM ━━━\u{001B}[0m\n");
+            for finding in &medium {
+                output.push_str(&format!("  [{}] {} ({})\n", finding.container_name, finding.message, finding.check_name));
+                if let Some(ref rem) = finding.remediation {
+                    output.push_str(&format!("    → {}\n", rem));
+                }
+            }
+            output.push('\n');
         }
         if !low.is_empty() {
-            self.print_group_low("LOW", &low);
+            output.push_str("\n\u{001B}[46;30m━━━ LOW ━━━\u{001B}[0m\n");
+            for finding in &low {
+                output.push_str(&format!("  [{}] {} ({})\n", finding.container_name, finding.message, finding.check_name));
+                if let Some(ref rem) = finding.remediation {
+                    output.push_str(&format!("    → {}\n", rem));
+                }
+            }
+            output.push('\n');
         }
         if !info.is_empty() {
-            self.print_group_info("INFO", &info);
-        }
-
-        println!();
-        self.print_summary(findings);
-    }
-
-    fn print_group_critical(&self, label: &str, findings: &[&Finding]) {
-        println!("{}", format!("━━━ {} ━━━", label).on_red().white().bold());
-        for finding in findings {
-            println!("  [{}] {}", finding.container_name.red().bold(), finding.message);
-            if let Some(ref rem) = finding.remediation {
-                println!("    → {}", rem);
+            output.push_str("\n\u{001B}[36m━━━ INFO ━━━\u{001B}[0m\n");
+            for finding in &info {
+                output.push_str(&format!("  [{}] {} ({})\n", finding.container_name, finding.message, finding.check_name));
+                if let Some(ref rem) = finding.remediation {
+                    output.push_str(&format!("    → {}\n", rem));
+                }
             }
+            output.push('\n');
         }
-        println!();
-    }
 
-    fn print_group_high(&self, label: &str, findings: &[&Finding]) {
-        println!("{}", format!("━━━ {} ━━━", label).on_yellow().black());
-        for finding in findings {
-            println!("  [{}] {}", finding.container_name.on_yellow().black(), finding.message);
-            if let Some(ref rem) = finding.remediation {
-                println!("    → {}", rem);
-            }
-        }
-        println!();
-    }
-
-    fn print_group_medium(&self, label: &str, findings: &[&Finding]) {
-        println!("{}", format!("━━━ {} ━━━", label).on_yellow().black());
-        for finding in findings {
-            println!("  [{}] {}", finding.container_name.on_yellow().black(), finding.message);
-            if let Some(ref rem) = finding.remediation {
-                println!("    → {}", rem);
-            }
-        }
-        println!();
-    }
-
-    fn print_group_low(&self, label: &str, findings: &[&Finding]) {
-        println!("{}", format!("━━━ {} ━━━", label).on_cyan().black());
-        for finding in findings {
-            println!("  [{}] {}", finding.container_name.on_cyan().black(), finding.message);
-            if let Some(ref rem) = finding.remediation {
-                println!("    → {}", rem);
-            }
-        }
-        println!();
-    }
-
-    fn print_group_info(&self, label: &str, findings: &[&Finding]) {
-        println!("{}", format!("━━━ {} ━━━", label).cyan());
-        for finding in findings {
-            println!("  [{}] {}", finding.container_name.cyan(), finding.message);
-            if let Some(ref rem) = finding.remediation {
-                println!("    → {}", rem);
-            }
-        }
-        println!();
-    }
-
-    fn print_summary(&self, findings: &[Finding]) {
-        let total = findings.len();
-        let by_container: std::collections::HashMap<_, _> = findings
-            .iter()
-            .fold(std::collections::HashMap::new(), |mut acc, f| {
-                *acc.entry(&f.container_name).or_insert(0) += 1;
-                acc
-            });
-
-        println!("─── Summary ───────────────────────────────────────────");
-        println!("  Total findings: {}", total);
-        for (container, count) in by_container {
-            println!("  • {}: {} finding(s)", container, count);
-        }
+        output.push_str(&self.format_summary(findings));
+        output
     }
 }
 
-impl Default for Reporter {
-    fn default() -> Self {
-        Self::new()
+/// Get a reporter for the given format name
+///
+/// # Errors
+///
+/// Returns an error if the format is unknown
+pub fn get_reporter(format: &str) -> Result<Box<dyn Reporter>, ReporterError> {
+    match format {
+        "terminal" => Ok(Box::new(TerminalReporter::new())),
+        "json" => Ok(Box::new(JsonReporter::new())),
+        "markdown" => Ok(Box::new(MarkdownReporter::new())),
+        _ => Err(ReporterError::UnknownFormat(format.to_string())),
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::finding::Finding;
 
     #[test]
-    fn test_report_with_no_findings() {
-        let reporter = Reporter::new();
-        reporter.report(&[]);
-    }
-
-    #[test]
-    fn test_report_with_single_finding() {
-        let reporter = Reporter::new();
+    fn test_get_reporter_json() {
+        let reporter = get_reporter("json");
+        assert!(reporter.is_ok());
+        let r = reporter.unwrap();
+        // Verify it produces JSON output
         let findings = vec![Finding::new(
             "PrivilegedCheck".to_string(),
             "nginx".to_string(),
@@ -146,17 +157,61 @@ mod tests {
             "Container is running in privileged mode".to_string(),
             Some("Remove privileged mode".to_string()),
         )];
-        reporter.report(&findings);
+        let output = r.report(&findings);
+        assert!(output.contains("\"check_name\": \"PrivilegedCheck\""));
     }
 
     #[test]
-    fn test_report_with_multiple_findings() {
-        let reporter = Reporter::new();
-        let findings = vec![
-            Finding::new("PrivilegedCheck".to_string(), "web".to_string(), Severity::Critical, "privileged".to_string(), None),
-            Finding::new("RootUserCheck".to_string(), "web".to_string(), Severity::High, "running as root".to_string(), None),
-            Finding::new("ExposedPortsCheck".to_string(), "db".to_string(), Severity::Medium, "port 5432 exposed".to_string(), None),
-        ];
-        reporter.report(&findings);
+    fn test_get_reporter_terminal() {
+        let reporter = get_reporter("terminal");
+        assert!(reporter.is_ok());
+        let r = reporter.unwrap();
+        let findings = vec![Finding::new(
+            "RootUserCheck".to_string(),
+            "web".to_string(),
+            Severity::High,
+            "running as root".to_string(),
+            None,
+        )];
+        let output = r.report(&findings);
+        eprintln!("TERMINAL OUTPUT: {}", output);
+        assert!(output.contains("RootUserCheck"));
+    }
+
+    #[test]
+    fn test_get_reporter_unknown_returns_error() {
+        match get_reporter("xml") {
+            Err(e) => assert!(e.to_string().contains("Unknown output format: xml")),
+            Ok(_) => panic!("Expected error for unknown format 'xml'"),
+        }
+    }
+
+    #[test]
+    fn test_reporter_trait_is_object_safe() {
+        fn assert_send_sync<T: Send + Sync>() {}
+        assert_send_sync::<Box<dyn Reporter>>();
+    }
+
+    #[test]
+    fn test_terminal_reporter_with_no_findings() {
+        let reporter = TerminalReporter::new();
+        let output = reporter.report(&[]);
+        assert!(output.contains("No security issues found"));
+    }
+
+    #[test]
+    fn test_json_reporter_with_no_findings() {
+        let reporter = JsonReporter::new();
+        let output = reporter.report(&[]);
+        // New format is { scan_time, container_count, finding_count, findings: [] }
+        assert!(output.contains("\"finding_count\": 0"));
+        assert!(output.contains("\"findings\": []"));
+    }
+
+    #[test]
+    fn test_markdown_reporter_with_no_findings() {
+        let reporter = MarkdownReporter::new();
+        let output = reporter.report(&[]);
+        assert!(output.contains("No security issues found"));
     }
 }

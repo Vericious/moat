@@ -115,7 +115,8 @@ async fn run_scan(config: &Config) -> anyhow::Result<()> {
     }
 
     let checks = checks::all_checks();
-    let reporter = report::Reporter::new();
+    let reporter = report::get_reporter(&config.format.to_string())
+        .map_err(|e| anyhow::anyhow!("{}", e))?;
 
     let all_findings: Vec<_> = containers.iter()
         .flat_map(|c| {
@@ -128,7 +129,7 @@ async fn run_scan(config: &Config) -> anyhow::Result<()> {
         })
         .collect();
 
-    reporter.report(&all_findings);
+    println!("{}", reporter.report(&all_findings));
     Ok(())
 }
 
