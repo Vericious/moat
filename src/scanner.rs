@@ -10,11 +10,11 @@ use crate::container::{ContainerInfo, MountInfo, PortInfo};
 #[derive(Debug, thiserror::Error)]
 pub enum ScanError {
     #[error("Failed to connect to Docker daemon: {0}")]
-    ConnectionError(String),
+    Connection(String),
     #[error("Failed to list containers: {0}")]
-    ListError(String),
+    List(String),
     #[error("Failed to inspect container {0}: {1}")]
-    InspectError(String, String),
+    Inspect(String, String),
 }
 
 /// Docker container scanner
@@ -30,7 +30,7 @@ impl Scanner {
     /// * `socket_path` - Path to the Docker socket (e.g., "/var/run/docker.sock")
     pub fn new(socket_path: &str) -> Result<Self, ScanError> {
         let docker = Docker::connect_with_socket(socket_path, 10000, bollard::API_DEFAULT_VERSION)
-            .map_err(|e| ScanError::ConnectionError(e.to_string()))?;
+            .map_err(|e| ScanError::Connection(e.to_string()))?;
 
         Ok(Scanner { docker })
     }
@@ -45,7 +45,7 @@ impl Scanner {
 
         let containers = self.docker.list_containers(Some(options))
             .await
-            .map_err(|e| ScanError::ListError(e.to_string()))?;
+            .map_err(|e| ScanError::List(e.to_string()))?;
 
         let mut results = Vec::new();
 
@@ -77,10 +77,10 @@ impl Scanner {
 
         let details = self.docker.inspect_container(container_id, Some(options))
             .await
-            .map_err(|e| ScanError::InspectError(container_id.to_string(), e.to_string()))?;
+            .map_err(|e| ScanError::Inspect(container_id.to_string(), e.to_string()))?;
 
         let config = details.config.ok_or_else(|| {
-            ScanError::InspectError(container_id.to_string(), "Missing container config".to_string())
+            ScanError::Inspect(container_id.to_string(), "Missing container config".to_string())
         })?;
 
         let host_config = details.host_config;
@@ -123,7 +123,7 @@ impl Scanner {
         // Extract capabilities from host config
         let capabilities = host_config.as_ref()
             .and_then(|hc| hc.cap_add.as_ref())
-            .map(|caps| caps.iter().cloned().collect::<Vec<String>>())
+            .map(|caps| caps.to_vec())
             .unwrap_or_default();
 
         // Extract memory limit
@@ -201,7 +201,7 @@ impl Scanner {
 
                     let host_ip = bindings.first()
                         .and_then(|binding| binding.host_ip.as_ref())
-                        .map(|ip| ip.clone())
+                        .cloned()
                         .unwrap_or_default();
 
                     ports.push(PortInfo {
@@ -283,7 +283,7 @@ mod tests {
         let result = Scanner::new("/nonexistent/path/docker.sock");
         if let Err(e) = result {
             match e {
-                ScanError::ConnectionError(_) => {}
+                ScanError::Connection(_) => {}
                 _ => panic!("Expected ConnectionError"),
             }
         }
@@ -294,7 +294,7 @@ mod tests {
         let result = Scanner::new("");
         if let Err(e) = result {
             match e {
-                ScanError::ConnectionError(_) => {}
+                ScanError::Connection(_) => {}
                 _ => panic!("Expected ConnectionError"),
             }
         }

@@ -175,7 +175,7 @@ fn extract_ports(network_settings: Option<&NetworkSettings>) -> Vec<PortInfo> {
                 let exposed = !bindings.is_empty();
                 let host_ip = bindings.first()
                     .and_then(|b| b.host_ip.as_ref())
-                    .map(|ip| ip.clone())
+                    .cloned()
                     .unwrap_or_default();
 
                 ports.push(PortInfo {
@@ -194,8 +194,6 @@ fn extract_ports(network_settings: Option<&NetworkSettings>) -> Vec<PortInfo> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::collections::HashMap;
-
     #[test]
     fn test_default_container_info() {
         let info = ContainerInfo::default();
