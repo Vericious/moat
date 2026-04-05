@@ -35,6 +35,9 @@ moat scan --socket /path/to/docker.sock
 # Verbose output
 moat scan --verbose
 
+# Exclude specific check categories from results (case-insensitive)
+moat scan --exclude-category privileged --exclude-category rootuser
+
 # Show version
 moat version
 ```
@@ -78,7 +81,7 @@ Exit code is non-zero if any Critical or High findings are present.
 
 ## Configuration
 
-No configuration file required. All checks are enabled by default.
+No configuration file required. All checks are enabled by default. Use `--exclude-category` to filter out specific checks from the scan results.
 
 ## Architecture
 
