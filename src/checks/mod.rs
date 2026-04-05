@@ -1,16 +1,16 @@
 use crate::container::ContainerInfo;
 use crate::finding::Finding;
 
-pub mod privileged;
-pub mod root_user;
-pub mod socket_mount;
-pub mod host_mounts;
-pub mod exposed_ports;
 pub mod env_secrets;
-pub mod resource_limits;
+pub mod exposed_ports;
 pub mod health_check;
+pub mod host_mounts;
 pub mod host_network;
 pub mod image_freshness;
+pub mod privileged;
+pub mod resource_limits;
+pub mod root_user;
+pub mod socket_mount;
 
 /// Trait for security checks that can be run against containers
 pub trait Check: Send + Sync {
@@ -56,7 +56,11 @@ mod tests {
     #[test]
     fn test_all_checks_returns_ten_checks() {
         let checks = all_checks();
-        assert_eq!(checks.len(), 10, "all_checks() should return exactly 10 checks");
+        assert_eq!(
+            checks.len(),
+            10,
+            "all_checks() should return exactly 10 checks"
+        );
     }
 
     #[test]

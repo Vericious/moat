@@ -28,6 +28,10 @@ struct Cli {
     #[arg(short, long, action = clap::ArgAction::SetTrue)]
     verbose: bool,
 
+    /// Exclude findings from checks matching these categories (repeatable, case-insensitive)
+    #[arg(long, value_name = "CATEGORY", global = true)]
+    exclude_category: Vec<String>,
+
     #[command(subcommand)]
     command: Option<Commands>,
 }
@@ -67,6 +71,7 @@ pub struct Config {
     pub format: OutputFormat,
     pub socket: PathBuf,
     pub verbose: bool,
+    pub exclude_category: Vec<String>,
 }
 
 impl From<&Cli> for Config {
@@ -75,16 +80,20 @@ impl From<&Cli> for Config {
             format: cli.format.clone(),
             socket: cli.socket.clone(),
             verbose: cli.verbose,
+            exclude_category: cli.exclude_category.clone(),
         }
     }
 }
 
-impl From<(OutputFormat, PathBuf, bool)> for Config {
-    fn from((format, socket, verbose): (OutputFormat, PathBuf, bool)) -> Self {
+impl From<(OutputFormat, PathBuf, bool, Vec<String>)> for Config {
+    fn from(
+        (format, socket, verbose, exclude_category): (OutputFormat, PathBuf, bool, Vec<String>),
+    ) -> Self {
         Config {
             format,
             socket,
             verbose,
+            exclude_category,
         }
     }
 }
@@ -98,11 +107,12 @@ async fn run_scan(config: &Config) -> anyhow::Result<()> {
         eprintln!("Connecting to Docker via socket: {:?}", config.socket);
     }
 
-    let scanner = scanner::Scanner::new(
-        config.socket.to_str().unwrap_or("/var/run/docker.sock")
-    ).map_err(|e| anyhow::anyhow!("Failed to connect to Docker: {}", e))?;
+    let scanner = scanner::Scanner::new(config.socket.to_str().unwrap_or("/var/run/docker.sock"))
+        .map_err(|e| anyhow::anyhow!("Failed to connect to Docker: {}", e))?;
 
-    let containers = scanner.scan().await
+    let containers = scanner
+        .scan()
+        .await
         .map_err(|e| anyhow::anyhow!("Failed to scan containers: {}", e))?;
 
     if config.verbose {
@@ -115,21 +125,59 @@ async fn run_scan(config: &Config) -> anyhow::Result<()> {
     }
 
     let checks = checks::all_checks();
-    let reporter = report::get_reporter(&config.format.to_string())
-        .map_err(|e| anyhow::anyhow!("{}", e))?;
+    let reporter =
+        report::get_reporter(&config.format.to_string()).map_err(|e| anyhow::anyhow!("{}", e))?;
 
-    let all_findings: Vec<_> = containers.iter()
+    let all_findings: Vec<_> = containers
+        .iter()
         .flat_map(|c| {
-            checks.iter().flat_map(|check| {
-                if config.verbose {
-                    eprintln!("  Running {} on {}", check.name(), c.name);
-                }
-                check.run(c)
-            }).collect::<Vec<_>>()
+            checks
+                .iter()
+                .flat_map(|check| {
+                    if config.verbose {
+                        eprintln!("  Running {} on {}", check.name(), c.name);
+                    }
+                    check.run(c)
+                })
+                .collect::<Vec<_>>()
         })
         .collect();
 
-    println!("{}", reporter.report(&all_findings));
+    // Build exclusion set (lowercase for case-insensitive matching)
+    let exclude_set: std::collections::HashSet<String> = config
+        .exclude_category
+        .iter()
+        .map(|s| s.to_lowercase())
+        .collect();
+
+    // Validate exclusions against known check names
+    if !exclude_set.is_empty() {
+        let all_checks_list = checks::all_checks();
+        let known_checks: std::collections::HashSet<String> = all_checks_list
+            .iter()
+            .map(|c| c.name().to_lowercase())
+            .collect();
+
+        let valid_categories: Vec<_> = all_checks_list.iter().map(|c| c.name()).collect();
+
+        for excluded in &exclude_set {
+            if !known_checks.contains(excluded) {
+                return Err(anyhow::anyhow!(
+                    "Invalid category '{}'. Valid categories are: {}",
+                    excluded,
+                    valid_categories.join(", ")
+                ));
+            }
+        }
+    }
+
+    // Filter findings by excluded categories
+    let filtered_findings: Vec<_> = all_findings
+        .into_iter()
+        .filter(|f| !exclude_set.contains(&f.check_name.to_lowercase()))
+        .collect();
+
+    println!("{}", reporter.report(&filtered_findings));
     Ok(())
 }
 
@@ -138,10 +186,7 @@ async fn main() {
     let cli = Cli::parse();
 
     let config = match &cli.command {
-        Some(Commands::Scan { socket }) => {
-            let socket = socket.clone().unwrap_or(cli.socket);
-            Config::from((cli.format, socket, cli.verbose))
-        }
+        Some(Commands::Scan { socket: _ }) => Config::from(&cli),
         Some(Commands::Version) => {
             run_version();
             return;
@@ -240,5 +285,69 @@ mod tests {
         assert_eq!(OutputFormat::Terminal.to_string(), "terminal");
         assert_eq!(OutputFormat::Json.to_string(), "json");
         assert_eq!(OutputFormat::Markdown.to_string(), "markdown");
+    }
+
+    #[test]
+    fn test_exclude_category_single() {
+        let cli = Cli::parse_from(["moat", "--exclude-category", "privileged"]);
+        assert_eq!(cli.exclude_category, vec!["privileged"]);
+    }
+
+    #[test]
+    fn test_exclude_category_multiple() {
+        let cli = Cli::parse_from([
+            "moat",
+            "--exclude-category",
+            "privileged",
+            "--exclude-category",
+            "rootuser",
+            "--exclude-category",
+            "exposedports",
+        ]);
+        assert_eq!(
+            cli.exclude_category,
+            vec!["privileged", "rootuser", "exposedports"]
+        );
+    }
+
+    #[test]
+    fn test_exclude_category_case_insensitive() {
+        let cli = Cli::parse_from(["moat", "--exclude-category", "PrIvIlegEd"]);
+        assert_eq!(cli.exclude_category, vec!["PrIvIlegEd"]);
+    }
+
+    #[test]
+    fn test_exclude_category_with_scan_subcommand() {
+        let cli = Cli::parse_from([
+            "moat",
+            "scan",
+            "--exclude-category",
+            "socketmount",
+            "--exclude-category",
+            "hostnetwork",
+        ]);
+        assert_eq!(cli.exclude_category, vec!["socketmount", "hostnetwork"]);
+    }
+
+    #[test]
+    fn test_config_exclude_category_from_cli() {
+        let cli = Cli::parse_from([
+            "moat",
+            "--exclude-category",
+            "envsecrets",
+            "--exclude-category",
+            "resourcelimits",
+        ]);
+        let config = Config::from(&cli);
+        assert_eq!(
+            config.exclude_category,
+            vec!["envsecrets", "resourcelimits"]
+        );
+    }
+
+    #[test]
+    fn test_exclude_category_empty_by_default() {
+        let cli = Cli::parse_from(["moat"]);
+        assert!(cli.exclude_category.is_empty());
     }
 }
