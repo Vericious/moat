@@ -25,3 +25,7 @@ tempfile = "3"
 
 [features]
 integration = []
+
+[[test]]
+name = "scan_flow"
+path = "tests/integration/scan_flow.rs"
