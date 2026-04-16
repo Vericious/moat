@@ -18,15 +18,7 @@ impl Default for HostMountsCheck {
 }
 
 /// Sensitive host paths that should not be bind mounted
-const SENSITIVE_PATHS: &[&str] = &[
-    "/",
-    "/etc",
-    "/root",
-    "/home",
-    "/var/run",
-    "/proc",
-    "/sys",
-];
+const SENSITIVE_PATHS: &[&str] = &["/", "/etc", "/root", "/home", "/var/run", "/proc", "/sys"];
 
 /// Check if a mount source is from a sensitive host path
 fn is_sensitive_mount(source: &str) -> bool {
@@ -61,7 +53,10 @@ impl Check for HostMountsCheck {
                         "Container '{}' has sensitive host path '{}' mounted",
                         container.name, mount.source
                     ),
-                    Some("Use named volumes instead of bind mounts to sensitive host paths".to_string()),
+                    Some(
+                        "Use named volumes instead of bind mounts to sensitive host paths"
+                            .to_string(),
+                    ),
                 ));
             }
         }
@@ -186,10 +181,7 @@ mod tests {
     #[test]
     fn test_multiple_sensitive_mounts() {
         let check = HostMountsCheck::new();
-        let container = make_container_with_mounts(vec![
-            make_mount("/etc"),
-            make_mount("/root"),
-        ]);
+        let container = make_container_with_mounts(vec![make_mount("/etc"), make_mount("/root")]);
         let findings = check.run(&container);
 
         assert_eq!(findings.len(), 2);

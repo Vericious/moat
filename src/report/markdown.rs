@@ -25,16 +25,34 @@ impl super::Reporter for MarkdownReporter {
         let mut output = String::from("# Security Scan Report\n\n");
 
         // Group by severity
-        let critical: Vec<_> = findings.iter().filter(|f| f.severity == Severity::Critical).collect();
-        let high: Vec<_> = findings.iter().filter(|f| f.severity == Severity::High).collect();
-        let medium: Vec<_> = findings.iter().filter(|f| f.severity == Severity::Medium).collect();
-        let low: Vec<_> = findings.iter().filter(|f| f.severity == Severity::Low).collect();
-        let info: Vec<_> = findings.iter().filter(|f| f.severity == Severity::Info).collect();
+        let critical: Vec<_> = findings
+            .iter()
+            .filter(|f| f.severity == Severity::Critical)
+            .collect();
+        let high: Vec<_> = findings
+            .iter()
+            .filter(|f| f.severity == Severity::High)
+            .collect();
+        let medium: Vec<_> = findings
+            .iter()
+            .filter(|f| f.severity == Severity::Medium)
+            .collect();
+        let low: Vec<_> = findings
+            .iter()
+            .filter(|f| f.severity == Severity::Low)
+            .collect();
+        let info: Vec<_> = findings
+            .iter()
+            .filter(|f| f.severity == Severity::Info)
+            .collect();
 
         if !critical.is_empty() {
             output.push_str("## 🔴 Critical\n\n");
             for f in &critical {
-                output.push_str(&format!("- **[{}]** [{}] {}  \n", f.container_name, f.check_name, f.message));
+                output.push_str(&format!(
+                    "- **[{}]** [{}] {}  \n",
+                    f.container_name, f.check_name, f.message
+                ));
                 if let Some(ref rem) = f.remediation {
                     output.push_str(&format!("  - Remediation: {}\n", rem));
                 }
@@ -45,7 +63,10 @@ impl super::Reporter for MarkdownReporter {
         if !high.is_empty() {
             output.push_str("## 🟠 High\n\n");
             for f in &high {
-                output.push_str(&format!("- **[{}]** [{}] {}  \n", f.container_name, f.check_name, f.message));
+                output.push_str(&format!(
+                    "- **[{}]** [{}] {}  \n",
+                    f.container_name, f.check_name, f.message
+                ));
                 if let Some(ref rem) = f.remediation {
                     output.push_str(&format!("  - Remediation: {}\n", rem));
                 }
@@ -56,7 +77,10 @@ impl super::Reporter for MarkdownReporter {
         if !medium.is_empty() {
             output.push_str("## 🟡 Medium\n\n");
             for f in &medium {
-                output.push_str(&format!("- **[{}]** [{}] {}  \n", f.container_name, f.check_name, f.message));
+                output.push_str(&format!(
+                    "- **[{}]** [{}] {}  \n",
+                    f.container_name, f.check_name, f.message
+                ));
                 if let Some(ref rem) = f.remediation {
                     output.push_str(&format!("  - Remediation: {}\n", rem));
                 }
@@ -67,7 +91,10 @@ impl super::Reporter for MarkdownReporter {
         if !low.is_empty() {
             output.push_str("## 🔵 Low\n\n");
             for f in &low {
-                output.push_str(&format!("- **[{}]** [{}] {}  \n", f.container_name, f.check_name, f.message));
+                output.push_str(&format!(
+                    "- **[{}]** [{}] {}  \n",
+                    f.container_name, f.check_name, f.message
+                ));
                 if let Some(ref rem) = f.remediation {
                     output.push_str(&format!("  - Remediation: {}\n", rem));
                 }
@@ -78,7 +105,10 @@ impl super::Reporter for MarkdownReporter {
         if !info.is_empty() {
             output.push_str("## ℹ️ Info\n\n");
             for f in &info {
-                output.push_str(&format!("- **[{}]** [{}] {}  \n", f.container_name, f.check_name, f.message));
+                output.push_str(&format!(
+                    "- **[{}]** [{}] {}  \n",
+                    f.container_name, f.check_name, f.message
+                ));
                 if let Some(ref rem) = f.remediation {
                     output.push_str(&format!("  - Remediation: {}\n", rem));
                 }
@@ -89,12 +119,13 @@ impl super::Reporter for MarkdownReporter {
         // Summary
         output.push_str("## Summary\n\n");
         let total = findings.len();
-        let by_container: std::collections::HashMap<_, _> = findings
-            .iter()
-            .fold(std::collections::HashMap::new(), |mut acc, f| {
-                *acc.entry(&f.container_name).or_insert(0) += 1;
-                acc
-            });
+        let by_container: std::collections::HashMap<_, _> =
+            findings
+                .iter()
+                .fold(std::collections::HashMap::new(), |mut acc, f| {
+                    *acc.entry(&f.container_name).or_insert(0) += 1;
+                    acc
+                });
 
         output.push_str(&format!("- **Total findings:** {}  \n", total));
         for (container, count) in by_container {
@@ -107,8 +138,8 @@ impl super::Reporter for MarkdownReporter {
 
 #[cfg(test)]
 mod tests {
-    use crate::report::Reporter;
     use crate::finding::{Finding, Severity};
+    use crate::report::Reporter;
     // MarkdownReporter is defined in the parent module
     use super::MarkdownReporter;
 

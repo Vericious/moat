@@ -84,7 +84,8 @@ mod tests {
     #[test]
     fn test_var_run_docker_sock_triggers_critical() {
         let check = SocketMountCheck::new();
-        let container = make_container_with_mounts(vec![make_docker_sock_mount("/var/run/docker.sock")]);
+        let container =
+            make_container_with_mounts(vec![make_docker_sock_mount("/var/run/docker.sock")]);
         let findings = check.run(&container);
 
         assert_eq!(findings.len(), 1);
@@ -95,7 +96,8 @@ mod tests {
     #[test]
     fn test_run_docker_sock_triggers() {
         let check = SocketMountCheck::new();
-        let container = make_container_with_mounts(vec![make_docker_sock_mount("/run/docker.sock")]);
+        let container =
+            make_container_with_mounts(vec![make_docker_sock_mount("/run/docker.sock")]);
         let findings = check.run(&container);
 
         assert_eq!(findings.len(), 1);

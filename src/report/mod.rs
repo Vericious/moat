@@ -30,12 +30,13 @@ impl TerminalReporter {
 
     fn format_summary(&self, findings: &[Finding]) -> String {
         let total = findings.len();
-        let by_container: std::collections::HashMap<_, _> = findings
-            .iter()
-            .fold(std::collections::HashMap::new(), |mut acc, f| {
-                *acc.entry(&f.container_name).or_insert(0) += 1;
-                acc
-            });
+        let by_container: std::collections::HashMap<_, _> =
+            findings
+                .iter()
+                .fold(std::collections::HashMap::new(), |mut acc, f| {
+                    *acc.entry(&f.container_name).or_insert(0) += 1;
+                    acc
+                });
 
         let mut output = String::from("─── Summary ───────────────────────────────────────────\n");
         output.push_str(&format!("  Total findings: {}\n", total));
@@ -59,11 +60,26 @@ impl Reporter for TerminalReporter {
         }
 
         // Group by severity
-        let critical: Vec<_> = findings.iter().filter(|f| f.severity == Severity::Critical).collect();
-        let high: Vec<_> = findings.iter().filter(|f| f.severity == Severity::High).collect();
-        let medium: Vec<_> = findings.iter().filter(|f| f.severity == Severity::Medium).collect();
-        let low: Vec<_> = findings.iter().filter(|f| f.severity == Severity::Low).collect();
-        let info: Vec<_> = findings.iter().filter(|f| f.severity == Severity::Info).collect();
+        let critical: Vec<_> = findings
+            .iter()
+            .filter(|f| f.severity == Severity::Critical)
+            .collect();
+        let high: Vec<_> = findings
+            .iter()
+            .filter(|f| f.severity == Severity::High)
+            .collect();
+        let medium: Vec<_> = findings
+            .iter()
+            .filter(|f| f.severity == Severity::Medium)
+            .collect();
+        let low: Vec<_> = findings
+            .iter()
+            .filter(|f| f.severity == Severity::Low)
+            .collect();
+        let info: Vec<_> = findings
+            .iter()
+            .filter(|f| f.severity == Severity::Info)
+            .collect();
 
         let mut output = String::new();
 
@@ -73,7 +89,10 @@ impl Reporter for TerminalReporter {
                 "\u{001B}[41;37;1m━━━ CRITICAL ━━━\u{001B}[0m"
             ));
             for finding in &critical {
-                output.push_str(&format!("\n  [{}] {} ({})\n", finding.container_name, finding.message, finding.check_name));
+                output.push_str(&format!(
+                    "\n  [{}] {} ({})\n",
+                    finding.container_name, finding.message, finding.check_name
+                ));
                 if let Some(ref rem) = finding.remediation {
                     output.push_str(&format!("    → {}\n", rem));
                 }
@@ -83,7 +102,10 @@ impl Reporter for TerminalReporter {
         if !high.is_empty() {
             output.push_str("\n\u{001B}[43;30m━━━ HIGH ━━━\u{001B}[0m\n");
             for finding in &high {
-                output.push_str(&format!("  [{}] {} ({})\n", finding.container_name, finding.message, finding.check_name));
+                output.push_str(&format!(
+                    "  [{}] {} ({})\n",
+                    finding.container_name, finding.message, finding.check_name
+                ));
                 if let Some(ref rem) = finding.remediation {
                     output.push_str(&format!("    → {}\n", rem));
                 }
@@ -93,7 +115,10 @@ impl Reporter for TerminalReporter {
         if !medium.is_empty() {
             output.push_str("\n\u{001B}[43;30m━━━ MEDIUM ━━━\u{001B}[0m\n");
             for finding in &medium {
-                output.push_str(&format!("  [{}] {} ({})\n", finding.container_name, finding.message, finding.check_name));
+                output.push_str(&format!(
+                    "  [{}] {} ({})\n",
+                    finding.container_name, finding.message, finding.check_name
+                ));
                 if let Some(ref rem) = finding.remediation {
                     output.push_str(&format!("    → {}\n", rem));
                 }
@@ -103,7 +128,10 @@ impl Reporter for TerminalReporter {
         if !low.is_empty() {
             output.push_str("\n\u{001B}[46;30m━━━ LOW ━━━\u{001B}[0m\n");
             for finding in &low {
-                output.push_str(&format!("  [{}] {} ({})\n", finding.container_name, finding.message, finding.check_name));
+                output.push_str(&format!(
+                    "  [{}] {} ({})\n",
+                    finding.container_name, finding.message, finding.check_name
+                ));
                 if let Some(ref rem) = finding.remediation {
                     output.push_str(&format!("    → {}\n", rem));
                 }
@@ -113,7 +141,10 @@ impl Reporter for TerminalReporter {
         if !info.is_empty() {
             output.push_str("\n\u{001B}[36m━━━ INFO ━━━\u{001B}[0m\n");
             for finding in &info {
-                output.push_str(&format!("  [{}] {} ({})\n", finding.container_name, finding.message, finding.check_name));
+                output.push_str(&format!(
+                    "  [{}] {} ({})\n",
+                    finding.container_name, finding.message, finding.check_name
+                ));
                 if let Some(ref rem) = finding.remediation {
                     output.push_str(&format!("    → {}\n", rem));
                 }

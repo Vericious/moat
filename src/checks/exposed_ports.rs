@@ -31,9 +31,9 @@ impl Check for ExposedPortsCheck {
             }
 
             let severity = match port.host_ip.as_str() {
-                "0.0.0.0" | "" => Severity::Medium,  // Bound to all interfaces
+                "0.0.0.0" | "" => Severity::Medium, // Bound to all interfaces
                 "127.0.0.1" => Severity::Low,       // Bound to localhost only
-                _ => Severity::Low,                  // Bound to specific IP
+                _ => Severity::Low,                 // Bound to specific IP
             };
 
             let bind_desc = if port.host_ip.is_empty() || port.host_ip == "0.0.0.0" {

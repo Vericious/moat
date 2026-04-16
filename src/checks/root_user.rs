@@ -39,11 +39,11 @@ impl Check for RootUserCheck {
                 self.name().to_string(),
                 container.name.clone(),
                 Severity::High,
-                format!(
-                    "Container '{}' is running as root user",
-                    container.name
+                format!("Container '{}' is running as root user", container.name),
+                Some(
+                    "Set USER directive in Dockerfile or use --user flag to run as non-root"
+                        .to_string(),
                 ),
-                Some("Set USER directive in Dockerfile or use --user flag to run as non-root".to_string()),
             )]
         } else {
             Vec::new()

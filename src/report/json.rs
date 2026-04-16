@@ -73,7 +73,8 @@ impl super::Reporter for JsonReporter {
             findings: self.format_findings(findings),
         };
 
-        serde_json::to_string_pretty(&report).unwrap_or_else(|_| r#"{"error": "failed to serialize report"}"#.to_string())
+        serde_json::to_string_pretty(&report)
+            .unwrap_or_else(|_| r#"{"error": "failed to serialize report"}"#.to_string())
     }
 }
 
@@ -90,7 +91,7 @@ fn chrono_lite_now() -> String {
 
 #[cfg(test)]
 mod tests {
-    use super::super::{Reporter, JsonReporter};
+    use super::super::{JsonReporter, Reporter};
     use crate::finding::{Finding, Severity};
 
     #[test]

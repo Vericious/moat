@@ -72,7 +72,8 @@ impl From<ContainerInspectResponse> for ContainerInfo {
         let network_settings = response.network_settings.as_ref();
 
         // Extract name (strip leading '/')
-        let name = response.name
+        let name = response
+            .name
             .as_ref()
             .map(|n| ContainerInfo::extract_name(n))
             .unwrap_or_default();
@@ -81,15 +82,14 @@ impl From<ContainerInspectResponse> for ContainerInfo {
         let image = config.and_then(|c| c.image.clone()).unwrap_or_default();
 
         // Privileged mode
-        let privileged = host_config
-            .and_then(|hc| hc.privileged)
-            .unwrap_or(false);
+        let privileged = host_config.and_then(|hc| hc.privileged).unwrap_or(false);
 
         // User
         let user = config.and_then(|c| c.user.clone());
 
         // Mounts
-        let mounts = response.mounts
+        let mounts = response
+            .mounts
             .as_ref()
             .unwrap_or(&Vec::new())
             .iter()
@@ -113,9 +113,7 @@ impl From<ContainerInspectResponse> for ContainerInfo {
             .unwrap_or_default();
 
         // Memory limit (i64 bytes -> u64)
-        let memory_limit = host_config
-            .and_then(|hc| hc.memory)
-            .map(|m| m as u64);
+        let memory_limit = host_config.and_then(|hc| hc.memory).map(|m| m as u64);
 
         // CPU limit: NanoCpus is in nanoseconds, convert to cores (fraction)
         let cpu_limit = host_config
@@ -123,13 +121,10 @@ impl From<ContainerInspectResponse> for ContainerInfo {
             .map(|nc| nc as f64 / 1_000_000_000.0);
 
         // Health check
-        let health_check = config
-            .and_then(|c| c.healthcheck.as_ref())
-            .is_some();
+        let health_check = config.and_then(|c| c.healthcheck.as_ref()).is_some();
 
         // Network mode
-        let network_mode = host_config
-            .and_then(|hc| hc.network_mode.clone());
+        let network_mode = host_config.and_then(|hc| hc.network_mode.clone());
 
         ContainerInfo {
             name,
@@ -154,7 +149,11 @@ fn mount_point_to_mount_info(m: &MountPoint) -> MountInfo {
         source: m.source.as_ref().unwrap_or(&String::new()).clone(),
         destination: m.destination.as_ref().unwrap_or(&String::new()).clone(),
         mode: m.mode.as_ref().unwrap_or(&String::new()).clone(),
-        mount_type: m.typ.as_ref().map(|t| format!("{:?}", t)).unwrap_or_default(),
+        mount_type: m
+            .typ
+            .as_ref()
+            .map(|t| format!("{:?}", t))
+            .unwrap_or_default(),
     }
 }
 
@@ -166,14 +165,16 @@ fn extract_ports(network_settings: Option<&NetworkSettings>) -> Vec<PortInfo> {
         if let Some(ports_map) = &settings.ports {
             for (port_key, bindings_opt) in ports_map {
                 let parts: Vec<&str> = port_key.split('/').collect();
-                let port: u16 = parts.first()
+                let port: u16 = parts
+                    .first()
                     .and_then(|p_str| p_str.parse().ok())
                     .unwrap_or(0);
                 let protocol = parts.get(1).unwrap_or(&"tcp").to_string();
 
                 let bindings: Vec<PortBinding> = bindings_opt.clone().unwrap_or_default();
                 let exposed = !bindings.is_empty();
-                let host_ip = bindings.first()
+                let host_ip = bindings
+                    .first()
                     .and_then(|b| b.host_ip.as_ref())
                     .cloned()
                     .unwrap_or_default();
@@ -307,14 +308,17 @@ mod tests {
     // ─── From<ContainerInspectResponse> tests ─────────────────────────────────
 
     fn make_full_inspect_response() -> ContainerInspectResponse {
-        use bollard::models::{ContainerConfig, HostConfig, HealthConfig, MountPoint, PortBinding};
+        use bollard::models::{ContainerConfig, HealthConfig, HostConfig, MountPoint, PortBinding};
         use std::collections::HashMap;
 
         let mut network_ports: HashMap<String, Option<Vec<PortBinding>>> = HashMap::new();
-        network_ports.insert("80/tcp".to_string(), Some(vec![PortBinding {
-            host_ip: Some("0.0.0.0".to_string()),
-            host_port: Some("8080".to_string()),
-        }]));
+        network_ports.insert(
+            "80/tcp".to_string(),
+            Some(vec![PortBinding {
+                host_ip: Some("0.0.0.0".to_string()),
+                host_port: Some("8080".to_string()),
+            }]),
+        );
 
         ContainerInspectResponse {
             id: Some("abc123".to_string()),
@@ -342,15 +346,13 @@ mod tests {
                 ports: Some(network_ports),
                 ..Default::default()
             }),
-            mounts: Some(vec![
-                MountPoint {
-                    source: Some("/host/data".to_string()),
-                    destination: Some("/container/data".to_string()),
-                    mode: Some("rw".to_string()),
-                    typ: Some(bollard::models::MountPointTypeEnum::BIND),
-                    ..Default::default()
-                },
-            ]),
+            mounts: Some(vec![MountPoint {
+                source: Some("/host/data".to_string()),
+                destination: Some("/container/data".to_string()),
+                mode: Some("rw".to_string()),
+                typ: Some(bollard::models::MountPointTypeEnum::BIND),
+                ..Default::default()
+            }]),
             ..Default::default()
         }
     }

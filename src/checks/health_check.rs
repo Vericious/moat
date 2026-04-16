@@ -31,11 +31,11 @@ impl Check for HealthCheckCheck {
                 self.name().to_string(),
                 container.name.clone(),
                 Severity::Medium,
-                format!(
-                    "Container '{}' has no health check defined",
-                    container.name
+                format!("Container '{}' has no health check defined", container.name),
+                Some(
+                    "Add a HEALTHCHECK instruction in Dockerfile or --health-cmd flag at runtime"
+                        .to_string(),
                 ),
-                Some("Add a HEALTHCHECK instruction in Dockerfile or --health-cmd flag at runtime".to_string()),
             )]
         }
     }

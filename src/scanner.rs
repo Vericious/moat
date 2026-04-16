@@ -1,8 +1,8 @@
 //! Docker container scanner for security checks
 
-use bollard::container::{ListContainersOptions, InspectContainerOptions};
+use bollard::container::{InspectContainerOptions, ListContainersOptions};
+use bollard::models::{NetworkSettings, PortBinding};
 use bollard::Docker;
-use bollard::models::{PortBinding, NetworkSettings};
 
 use crate::container::{ContainerInfo, MountInfo, PortInfo};
 
@@ -43,7 +43,9 @@ impl Scanner {
             ..Default::default()
         };
 
-        let containers = self.docker.list_containers(Some(options))
+        let containers = self
+            .docker
+            .list_containers(Some(options))
             .await
             .map_err(|e| ScanError::List(e.to_string()))?;
 
@@ -61,7 +63,10 @@ impl Scanner {
                 Ok(info) => results.push(info),
                 Err(e) => {
                     // Log error but continue with other containers
-                    eprintln!("Warning: Failed to inspect container {}: {}", container_id, e);
+                    eprintln!(
+                        "Warning: Failed to inspect container {}: {}",
+                        container_id, e
+                    );
                 }
             }
         }
@@ -71,16 +76,19 @@ impl Scanner {
 
     /// Inspect a single container and convert to ContainerInfo
     async fn inspect_container(&self, container_id: &str) -> Result<ContainerInfo, ScanError> {
-        let options = InspectContainerOptions {
-            size: false,
-        };
+        let options = InspectContainerOptions { size: false };
 
-        let details = self.docker.inspect_container(container_id, Some(options))
+        let details = self
+            .docker
+            .inspect_container(container_id, Some(options))
             .await
             .map_err(|e| ScanError::Inspect(container_id.to_string(), e.to_string()))?;
 
         let config = details.config.ok_or_else(|| {
-            ScanError::Inspect(container_id.to_string(), "Missing container config".to_string())
+            ScanError::Inspect(
+                container_id.to_string(),
+                "Missing container config".to_string(),
+            )
         })?;
 
         let host_config = details.host_config;
@@ -88,7 +96,8 @@ impl Scanner {
         let mounts = details.mounts;
 
         // Extract container name
-        let name = details.name
+        let name = details
+            .name
             .as_ref()
             .map(|n| ContainerInfo::extract_name(n))
             .unwrap_or_default();
@@ -97,7 +106,8 @@ impl Scanner {
         let image = config.image.unwrap_or_default();
 
         // Check privileged mode
-        let privileged = host_config.as_ref()
+        let privileged = host_config
+            .as_ref()
             .and_then(|hc| hc.privileged)
             .unwrap_or(false);
 
@@ -111,7 +121,8 @@ impl Scanner {
         let ports = self.extract_ports(&network_settings);
 
         // Extract environment variables (keys only)
-        let env = config.env
+        let env = config
+            .env
             .unwrap_or_default()
             .iter()
             .filter_map(|e| {
@@ -121,21 +132,25 @@ impl Scanner {
             .collect();
 
         // Extract capabilities from host config
-        let capabilities = host_config.as_ref()
+        let capabilities = host_config
+            .as_ref()
             .and_then(|hc| hc.cap_add.as_ref())
             .map(|caps| caps.to_vec())
             .unwrap_or_default();
 
         // Extract memory limit
-        let memory_limit = host_config.as_ref()
+        let memory_limit = host_config
+            .as_ref()
             .and_then(|hc| hc.memory)
             .map(|m| m as u64);
 
         // Extract CPU limit
-        let cpu_limit = host_config.as_ref()
+        let cpu_limit = host_config
+            .as_ref()
             .and_then(|hc| hc.cpu_period.as_ref())
             .and_then(|period| {
-                host_config.as_ref()
+                host_config
+                    .as_ref()
                     .and_then(|hc| hc.cpu_quota.as_ref())
                     .map(|quota| (*quota as f64) / (*period as f64))
             });
@@ -144,8 +159,7 @@ impl Scanner {
         let health_check = config.healthcheck.is_some();
 
         // Extract network mode
-        let network_mode = host_config.as_ref()
-            .and_then(|hc| hc.network_mode.clone());
+        let network_mode = host_config.as_ref().and_then(|hc| hc.network_mode.clone());
 
         Ok(ContainerInfo {
             name,
@@ -164,17 +178,23 @@ impl Scanner {
     }
 
     /// Extract mount information from container details
-    fn extract_mounts_from_option(&self, mounts: &Option<Vec<bollard::models::MountPoint>>) -> Vec<MountInfo> {
-        mounts.as_ref()
+    fn extract_mounts_from_option(
+        &self,
+        mounts: &Option<Vec<bollard::models::MountPoint>>,
+    ) -> Vec<MountInfo> {
+        mounts
+            .as_ref()
             .unwrap_or(&Vec::new())
             .iter()
-            .map(|m| {
-                MountInfo {
-                    source: m.source.as_ref().unwrap_or(&String::new()).clone(),
-                    destination: m.destination.as_ref().unwrap_or(&String::new()).clone(),
-                    mode: m.mode.as_ref().unwrap_or(&String::new()).clone(),
-                    mount_type: m.typ.as_ref().map(|t| format!("{:?}", t)).unwrap_or_default(),
-                }
+            .map(|m| MountInfo {
+                source: m.source.as_ref().unwrap_or(&String::new()).clone(),
+                destination: m.destination.as_ref().unwrap_or(&String::new()).clone(),
+                mode: m.mode.as_ref().unwrap_or(&String::new()).clone(),
+                mount_type: m
+                    .typ
+                    .as_ref()
+                    .map(|t| format!("{:?}", t))
+                    .unwrap_or_default(),
             })
             .collect()
     }
@@ -190,7 +210,8 @@ impl Scanner {
                 for (port_key, bindings_opt) in ports_map {
                     // Parse port key (e.g., "80/tcp", "443/udp")
                     let parts: Vec<&str> = port_key.split('/').collect();
-                    let port: u16 = parts.first()
+                    let port: u16 = parts
+                        .first()
                         .and_then(|p_str: &&str| p_str.parse().ok())
                         .unwrap_or(0);
                     let protocol = parts.get(1).unwrap_or(&"tcp").to_string();
@@ -199,7 +220,8 @@ impl Scanner {
                     let bindings: Vec<PortBinding> = bindings_opt.clone().unwrap_or_default();
                     let exposed = !bindings.is_empty();
 
-                    let host_ip = bindings.first()
+                    let host_ip = bindings
+                        .first()
                         .and_then(|binding| binding.host_ip.as_ref())
                         .cloned()
                         .unwrap_or_default();
@@ -231,14 +253,12 @@ mod tests {
             image: "nginx:latest".to_string(),
             privileged: true,
             user: Some("root".to_string()),
-            mounts: vec![
-                MountInfo {
-                    source: "/host/data".to_string(),
-                    destination: "/container/data".to_string(),
-                    mode: "rw".to_string(),
-                    mount_type: "bind".to_string(),
-                },
-            ],
+            mounts: vec![MountInfo {
+                source: "/host/data".to_string(),
+                destination: "/container/data".to_string(),
+                mode: "rw".to_string(),
+                mount_type: "bind".to_string(),
+            }],
             ports: vec![
                 PortInfo {
                     port: 80,
@@ -253,7 +273,10 @@ mod tests {
                     host_ip: "".to_string(),
                 },
             ],
-            env: vec!["PATH=/usr/bin".to_string(), "NGINX_VERSION=1.25.0".to_string()],
+            env: vec![
+                "PATH=/usr/bin".to_string(),
+                "NGINX_VERSION=1.25.0".to_string(),
+            ],
             capabilities: vec!["NET_ADMIN".to_string(), "SYS_ADMIN".to_string()],
             memory_limit: Some(512_000_000),
             cpu_limit: Some(0.5),
@@ -326,7 +349,9 @@ mod tests {
         assert!(result.is_err(), "Expected error for invalid socket");
         let err_msg = result.unwrap_err().to_string().to_lowercase();
         assert!(
-            err_msg.contains("connect") || err_msg.contains("socket") || err_msg.contains("not found"),
+            err_msg.contains("connect")
+                || err_msg.contains("socket")
+                || err_msg.contains("not found"),
             "Expected descriptive error, got: {}",
             err_msg
         );

@@ -18,13 +18,7 @@ impl Default for EnvSecretsCheck {
 }
 
 /// Patterns that indicate a secret value
-const SECRET_PATTERNS: &[&str] = &[
-    "PASSWORD",
-    "SECRET",
-    "TOKEN",
-    "API_KEY",
-    "PRIVATE_KEY",
-];
+const SECRET_PATTERNS: &[&str] = &["PASSWORD", "SECRET", "TOKEN", "API_KEY", "PRIVATE_KEY"];
 
 /// Check if an environment variable key contains a secret pattern
 fn is_secret_key(key: &str) -> bool {
@@ -39,11 +33,11 @@ fn is_secret_key(key: &str) -> bool {
                 if key_bytes[i..i + pattern_bytes.len()] == *pattern_bytes {
                     // For before: valid if at start OR preceded by non-alphanumeric (including underscore)
                     let valid_before = i == 0 || !key_bytes[i - 1].is_ascii_alphanumeric();
-                    
+
                     // For after: valid if at end OR followed by non-alphanumeric (including underscore)
                     let end_idx = i + pattern_bytes.len();
-                    let valid_after = end_idx == key_bytes.len() 
-                        || !key_bytes[end_idx].is_ascii_alphanumeric();
+                    let valid_after =
+                        end_idx == key_bytes.len() || !key_bytes[end_idx].is_ascii_alphanumeric();
 
                     if valid_before && valid_after {
                         return true;

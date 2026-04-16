@@ -18,12 +18,7 @@ impl Default for PrivilegedCheck {
 }
 
 /// Dangerous capabilities that warrant a High severity finding
-const DANGEROUS_CAPABILITIES: &[&str] = &[
-    "SYS_ADMIN",
-    "NET_ADMIN",
-    "SYS_PTRACE",
-    "DAC_OVERRIDE",
-];
+const DANGEROUS_CAPABILITIES: &[&str] = &["SYS_ADMIN", "NET_ADMIN", "SYS_PTRACE", "DAC_OVERRIDE"];
 
 impl Check for PrivilegedCheck {
     fn name(&self) -> &str {
@@ -43,7 +38,9 @@ impl Check for PrivilegedCheck {
                     "Container '{}' is running in privileged mode",
                     container.name
                 ),
-                Some("Remove privileged mode from the container security configuration".to_string()),
+                Some(
+                    "Remove privileged mode from the container security configuration".to_string(),
+                ),
             ));
         }
 
@@ -155,10 +152,7 @@ mod tests {
     #[test]
     fn test_privileged_and_caps_produce_both_findings() {
         let check = PrivilegedCheck::new();
-        let container = make_container(
-            true,
-            vec!["SYS_ADMIN".to_string()],
-        );
+        let container = make_container(true, vec!["SYS_ADMIN".to_string()]);
         let findings = check.run(&container);
 
         assert_eq!(findings.len(), 2);
