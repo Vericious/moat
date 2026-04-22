@@ -9,6 +9,7 @@ pub mod host_mounts;
 pub mod host_network;
 pub mod image_freshness;
 pub mod nonroot_user;
+pub mod network_isolation;
 pub mod privileged;
 pub mod readonly_rootfs;
 pub mod resource_limits;
@@ -46,6 +47,7 @@ pub fn all_checks() -> Vec<Box<dyn Check>> {
         Box::new(readonly_rootfs::ReadonlyRootfsCheck::new()),
         Box::new(cpu_limit::CpuLimitCheck::new()),
         Box::new(memory_limit::MemoryLimitCheck::new()),
+        Box::new(network_isolation::NetworkIsolationCheck::new()),
     ]
 }
 
@@ -66,12 +68,12 @@ mod tests {
     }
 
     #[test]
-    fn test_all_checks_returns_sixteen_checks() {
+    fn test_all_checks_returns_seventeen_checks() {
         let checks = all_checks();
         assert_eq!(
             checks.len(),
-            16,
-            "all_checks() should return exactly 16 checks"
+            17,
+            "all_checks() should return exactly 17 checks"
         );
     }
 
