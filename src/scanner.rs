@@ -175,6 +175,7 @@ impl Scanner {
             health_check,
             network_mode,
             seccomp_profile: None,
+            readonly_rootfs: false,
         })
     }
 
@@ -284,6 +285,7 @@ mod tests {
             health_check: true,
             network_mode: Some("bridge".to_string()),
             seccomp_profile: None,
+            readonly_rootfs: false,
         };
 
         // Verify name extraction strips leading slash

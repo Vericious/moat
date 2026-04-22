@@ -57,6 +57,8 @@ pub struct ContainerInfo {
     pub network_mode: Option<String>,
     /// Seccomp profile (None = unset/unconfined, Some(_) = profile set)
     pub seccomp_profile: Option<String>,
+    /// Whether the root filesystem is mounted read-only
+    pub readonly_rootfs: bool,
 }
 
 impl ContainerInfo {
@@ -140,6 +142,11 @@ impl From<ContainerInspectResponse> for ContainerInfo {
                     .filter(|opt| opt.contains("seccomp="))
             });
 
+        // Readonly root filesystem
+        let readonly_rootfs = host_config
+            .and_then(|hc| hc.readonly_rootfs)
+            .unwrap_or(false);
+
         ContainerInfo {
             name,
             image,
@@ -154,6 +161,7 @@ impl From<ContainerInspectResponse> for ContainerInfo {
             health_check,
             network_mode,
             seccomp_profile,
+            readonly_rootfs,
         }
     }
 }
@@ -226,6 +234,8 @@ mod tests {
         assert!(info.cpu_limit.is_none());
         assert!(!info.health_check);
         assert!(info.network_mode.is_none());
+        assert!(info.seccomp_profile.is_none());
+        assert!(!info.readonly_rootfs);
     }
 
     #[test]

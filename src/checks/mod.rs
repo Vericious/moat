@@ -10,6 +10,7 @@ pub mod host_network;
 pub mod image_freshness;
 pub mod nonroot_user;
 pub mod privileged;
+pub mod readonly_rootfs;
 pub mod resource_limits;
 pub mod root_user;
 pub mod seccomp;
@@ -40,6 +41,7 @@ pub fn all_checks() -> Vec<Box<dyn Check>> {
         Box::new(capabilities::CapabilitiesCheck::new()),
         Box::new(seccomp::SeccompCheck::new()),
         Box::new(nonroot_user::NonRootUserCheck::new()),
+        Box::new(readonly_rootfs::ReadonlyRootfsCheck::new()),
     ]
 }
 
@@ -60,12 +62,12 @@ mod tests {
     }
 
     #[test]
-    fn test_all_checks_returns_thirteen_checks() {
+    fn test_all_checks_returns_fourteen_checks() {
         let checks = all_checks();
         assert_eq!(
             checks.len(),
-            13,
-            "all_checks() should return exactly 13 checks"
+            14,
+            "all_checks() should return exactly 14 checks"
         );
     }
 
