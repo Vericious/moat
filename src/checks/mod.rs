@@ -1,6 +1,7 @@
 use crate::container::ContainerInfo;
 use crate::finding::Finding;
 
+pub mod capabilities;
 pub mod env_secrets;
 pub mod exposed_ports;
 pub mod health_check;
@@ -34,6 +35,7 @@ pub fn all_checks() -> Vec<Box<dyn Check>> {
         Box::new(health_check::HealthCheckCheck::new()),
         Box::new(host_network::HostNetworkCheck::new()),
         Box::new(image_freshness::ImageFreshnessCheck::new()),
+        Box::new(capabilities::CapabilitiesCheck::new()),
     ]
 }
 
@@ -54,12 +56,12 @@ mod tests {
     }
 
     #[test]
-    fn test_all_checks_returns_ten_checks() {
+    fn test_all_checks_returns_eleven_checks() {
         let checks = all_checks();
         assert_eq!(
             checks.len(),
-            10,
-            "all_checks() should return exactly 10 checks"
+            11,
+            "all_checks() should return exactly 11 checks"
         );
     }
 
