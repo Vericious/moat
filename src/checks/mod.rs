@@ -13,6 +13,7 @@ pub mod privileged;
 pub mod readonly_rootfs;
 pub mod resource_limits;
 pub mod cpu_limit;
+pub mod memory_limit;
 pub mod root_user;
 pub mod seccomp;
 pub mod socket_mount;
@@ -44,6 +45,7 @@ pub fn all_checks() -> Vec<Box<dyn Check>> {
         Box::new(nonroot_user::NonRootUserCheck::new()),
         Box::new(readonly_rootfs::ReadonlyRootfsCheck::new()),
         Box::new(cpu_limit::CpuLimitCheck::new()),
+        Box::new(memory_limit::MemoryLimitCheck::new()),
     ]
 }
 
@@ -64,12 +66,12 @@ mod tests {
     }
 
     #[test]
-    fn test_all_checks_returns_fifteen_checks() {
+    fn test_all_checks_returns_sixteen_checks() {
         let checks = all_checks();
         assert_eq!(
             checks.len(),
-            15,
-            "all_checks() should return exactly 15 checks"
+            16,
+            "all_checks() should return exactly 16 checks"
         );
     }
 
