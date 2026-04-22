@@ -8,6 +8,7 @@ pub mod health_check;
 pub mod host_mounts;
 pub mod host_network;
 pub mod image_freshness;
+pub mod nonroot_user;
 pub mod privileged;
 pub mod resource_limits;
 pub mod root_user;
@@ -38,6 +39,7 @@ pub fn all_checks() -> Vec<Box<dyn Check>> {
         Box::new(image_freshness::ImageFreshnessCheck::new()),
         Box::new(capabilities::CapabilitiesCheck::new()),
         Box::new(seccomp::SeccompCheck::new()),
+        Box::new(nonroot_user::NonRootUserCheck::new()),
     ]
 }
 
@@ -58,12 +60,12 @@ mod tests {
     }
 
     #[test]
-    fn test_all_checks_returns_twelve_checks() {
+    fn test_all_checks_returns_thirteen_checks() {
         let checks = all_checks();
         assert_eq!(
             checks.len(),
-            12,
-            "all_checks() should return exactly 12 checks"
+            13,
+            "all_checks() should return exactly 13 checks"
         );
     }
 
