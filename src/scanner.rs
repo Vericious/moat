@@ -176,6 +176,7 @@ impl Scanner {
             network_mode,
             seccomp_profile: None,
             readonly_rootfs: false,
+            userns_mode: None,
         })
     }
 
@@ -286,6 +287,7 @@ mod tests {
             network_mode: Some("bridge".to_string()),
             seccomp_profile: None,
             readonly_rootfs: false,
+            userns_mode: None,
         };
 
         // Verify name extraction strips leading slash

@@ -59,6 +59,8 @@ pub struct ContainerInfo {
     pub seccomp_profile: Option<String>,
     /// Whether the root filesystem is mounted read-only
     pub readonly_rootfs: bool,
+    /// User namespace remapping mode (None = not remapped)
+    pub userns_mode: Option<String>,
 }
 
 impl ContainerInfo {
@@ -147,6 +149,9 @@ impl From<ContainerInspectResponse> for ContainerInfo {
             .and_then(|hc| hc.readonly_rootfs)
             .unwrap_or(false);
 
+        // User namespace remapping mode
+        let userns_mode = host_config.and_then(|hc| hc.userns_mode.clone());
+
         ContainerInfo {
             name,
             image,
@@ -162,6 +167,7 @@ impl From<ContainerInspectResponse> for ContainerInfo {
             network_mode,
             seccomp_profile,
             readonly_rootfs,
+            userns_mode,
         }
     }
 }
@@ -236,6 +242,7 @@ mod tests {
         assert!(info.network_mode.is_none());
         assert!(info.seccomp_profile.is_none());
         assert!(!info.readonly_rootfs);
+        assert!(info.userns_mode.is_none());
     }
 
     #[test]
