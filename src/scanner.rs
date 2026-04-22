@@ -174,6 +174,7 @@ impl Scanner {
             cpu_limit,
             health_check,
             network_mode,
+            seccomp_profile: None,
         })
     }
 
@@ -282,6 +283,7 @@ mod tests {
             cpu_limit: Some(0.5),
             health_check: true,
             network_mode: Some("bridge".to_string()),
+            seccomp_profile: None,
         };
 
         // Verify name extraction strips leading slash

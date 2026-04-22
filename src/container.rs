@@ -55,6 +55,8 @@ pub struct ContainerInfo {
     pub health_check: bool,
     /// Network mode (e.g., "host", "bridge", "none")
     pub network_mode: Option<String>,
+    /// Seccomp profile (None = unset/unconfined, Some(_) = profile set)
+    pub seccomp_profile: Option<String>,
 }
 
 impl ContainerInfo {
@@ -126,6 +128,18 @@ impl From<ContainerInspectResponse> for ContainerInfo {
         // Network mode
         let network_mode = host_config.and_then(|hc| hc.network_mode.clone());
 
+        // Seccomp profile: SecurityOpt lists security options.
+        // "unconfined" means seccomp is disabled.
+        // "seccomp:profile-name" means a profile is applied.
+        // Empty or no SecurityOpt → no seccomp (treat as unconfined).
+        let seccomp_profile = host_config
+            .and_then(|hc| hc.security_opt.clone())
+            .and_then(|opts| {
+                opts.into_iter()
+                    .find(|opt| !opt.to_lowercase().contains("unconfined"))
+                    .filter(|opt| opt.contains("seccomp="))
+            });
+
         ContainerInfo {
             name,
             image,
@@ -139,6 +153,7 @@ impl From<ContainerInspectResponse> for ContainerInfo {
             cpu_limit,
             health_check,
             network_mode,
+            seccomp_profile,
         }
     }
 }

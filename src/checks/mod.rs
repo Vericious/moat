@@ -11,6 +11,7 @@ pub mod image_freshness;
 pub mod privileged;
 pub mod resource_limits;
 pub mod root_user;
+pub mod seccomp;
 pub mod socket_mount;
 
 /// Trait for security checks that can be run against containers
@@ -36,6 +37,7 @@ pub fn all_checks() -> Vec<Box<dyn Check>> {
         Box::new(host_network::HostNetworkCheck::new()),
         Box::new(image_freshness::ImageFreshnessCheck::new()),
         Box::new(capabilities::CapabilitiesCheck::new()),
+        Box::new(seccomp::SeccompCheck::new()),
     ]
 }
 
@@ -56,12 +58,12 @@ mod tests {
     }
 
     #[test]
-    fn test_all_checks_returns_eleven_checks() {
+    fn test_all_checks_returns_twelve_checks() {
         let checks = all_checks();
         assert_eq!(
             checks.len(),
-            11,
-            "all_checks() should return exactly 11 checks"
+            12,
+            "all_checks() should return exactly 12 checks"
         );
     }
 
